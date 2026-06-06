@@ -303,46 +303,29 @@ function avancarPalete(numRaw){
 }
 
 function gerarEImprimir(){
-  const dados=getDados();
+  const dados = getDados();
   if(!dados){mostrarMsg('Preencha o número do palete e a quantidade de chapas.',false);return;}
-  const doc=gerarPDF(dados);
-  const fileName='etiqueta_OF'+dados.of+'_palete'+dados.numPalete+'.pdf';
-  const blob=doc.output('blob');
-  const url=URL.createObjectURL(blob);
-
-  // Detecta WebView Android (Kodular/app nativo)
-  const isWebView = /wv|WebView/.test(navigator.userAgent) || (window.Android !== undefined);
-
-  if (isWebView) {
-    // Dentro do app: abre PDF em nova aba e dispara print() nativo do Android
-    const w = window.open(url, '_blank');
-    if (w) {
-      w.onload = () => { try { w.print(); } catch(e) {} };
-    } else {
-      // Se não abriu nova aba, usa iframe invisível
-      const iframe = document.createElement('iframe');
-      iframe.style.cssText = 'position:fixed;width:0;height:0;border:none;';
-      iframe.src = url;
-      document.body.appendChild(iframe);
-      iframe.onload = () => {
-        try { iframe.contentWindow.print(); } catch(e) {}
-        setTimeout(() => document.body.removeChild(iframe), 5000);
-      };
-    }
-    mostrarMsg('✓ OF '+dados.of+' · Palete '+dados.numPalete+' — abrindo impressão...',true);
-
-  } else if (navigator.share && navigator.canShare && navigator.canShare({files:[new File([blob],fileName,{type:'application/pdf'})]})) {
-    // Navegador com suporte a share (Chrome Android)
-    const file = new File([blob], fileName, {type:'application/pdf'});
-    navigator.share({files:[file], title:fileName})
-      .then(()=>mostrarMsg('✓ OF '+dados.of+' · Palete '+dados.numPalete+' — compartilhado',true))
-      .catch(()=>{});
-
+  
+  // 1. Gera o PDF e baixa/salva na memória se necessário, ou apenas faz o avanço
+  // Como o Kodular vai interceptar o comando, nós avisamos o aplicativo primeiro:
+  
+  // Detecta se está dentro do Webview do App Inventor / Kodular
+  if (window.AppInventor) {
+    // Envia o sinal "imprimir" para o bloco do Kodular que você acabou de programar!
+    window.AppInventor.setWebViewString("imprimir");
+    mostrarMsg('✓ Enviando comando para o aplicativo...', true);
   } else {
-    // Fallback: abre em nova aba
-    window.open(url,'_blank');
-    mostrarMsg('✓ OF '+dados.of+' · Palete '+dados.numPalete+' — PDF aberto, toque em Imprimir',true);
+    // Fallback caso você teste pelo navegador normal do PC
+    const doc = gerarPDF(dados);
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    mostrarMsg('✓ PDF aberto no navegador', true);
   }
+
+  // Avança o número do palete automaticamente
+  avancarPalete(dados.numRaw);
+}
 
   avancarPalete(dados.numRaw);
 }
