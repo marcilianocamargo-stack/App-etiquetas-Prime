@@ -35,7 +35,6 @@
 </head>
 <body>
 <div class="wrap">
-
   <div class="header">
     <div class="logo-box">PRIME</div>
     <div>
@@ -44,28 +43,24 @@
     </div>
   </div>
 
-  <!-- PASSO 1 -->
   <div class="card">
     <div class="step">1 · Carregar programação (xlsx)</div>
     <input type="file" id="fileXlsx" accept=".xlsx,.xls">
     <div id="msgXlsx" style="margin-top:7px;font-size:12px;color:#2e7d32;display:none"></div>
   </div>
 
-  <!-- SELETOR DE ABA -->
   <div class="card" id="cardAba" style="display:none">
     <div class="step">1b · Selecionar aba</div>
     <select id="selAba"></select>
     <button onclick="carregarAba()" style="margin-top:8px;width:100%;padding:9px;border-radius:6px;border:none;background:#1a56a0;color:white;font-weight:700;font-size:14px;cursor:pointer">Carregar aba</button>
   </div>
 
-  <!-- PASSO 2 -->
   <div class="card" id="cardOf" style="display:none">
     <div class="step">2 · Selecionar OF</div>
     <select id="selOf"></select>
     <div class="preview-box" id="previewDados"></div>
   </div>
 
-  <!-- PASSO 3 -->
   <div class="card" id="cardPalete" style="display:none">
     <div class="step">3 · Dados do palete</div>
     <div class="grid2">
@@ -91,9 +86,8 @@ const LOGO_B64 = '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQ
 const { jsPDF } = window.jspdf;
 let ordens = [], workbook = null;
 
-// ---- Utilitários ----
 function numFmt(v) {
-  if (v === null || v === undefined || v === '') return '';
+  if (v===null||v===undefined||v==='') return '';
   const n = parseFloat(v);
   if (isNaN(n)) return String(v);
   return n.toFixed(3).replace('.', ',');
@@ -102,245 +96,268 @@ function findCol(headers, keys) {
   return headers.find(h => h && keys.some(k => h.toLowerCase().includes(k))) || '';
 }
 function detectarCabecalho(ws) {
-  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:Z10');
-  for (let r = range.s.r; r <= Math.min(range.e.r, 5); r++) {
-    const row = [];
-    for (let c = range.s.c; c <= range.e.c; c++) {
-      const cell = ws[XLSX.utils.encode_cell({r, c})];
-      row.push(cell ? String(cell.v || '') : '');
+  const range = XLSX.utils.decode_range(ws['!ref']||'A1:Z10');
+  for (let r=range.s.r; r<=Math.min(range.e.r,5); r++) {
+    const row=[];
+    for (let c=range.s.c; c<=range.e.c; c++) {
+      const cell=ws[XLSX.utils.encode_cell({r,c})];
+      row.push(cell?String(cell.v||''):'');
     }
-    if (row.some(h => h.toUpperCase() === 'OF')) return r;
+    if (row.some(h=>h.toUpperCase()==='OF')) return r;
   }
   return 0;
 }
 function processarAba(ws) {
-  const hr = detectarCabecalho(ws);
-  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-  const nr = Object.assign({}, range, {s: {r: hr, c: range.s.c}});
-  const wsC = Object.assign({}, ws, {'!ref': XLSX.utils.encode_range(nr)});
-  const data = XLSX.utils.sheet_to_json(wsC, {defval: '', raw: true});
+  const hr=detectarCabecalho(ws);
+  const range=XLSX.utils.decode_range(ws['!ref']||'A1');
+  const nr=Object.assign({},range,{s:{r:hr,c:range.s.c}});
+  const wsC=Object.assign({},ws,{'!ref':XLSX.utils.encode_range(nr)});
+  const data=XLSX.utils.sheet_to_json(wsC,{defval:'',raw:true});
   if (!data.length) return [];
-  const headers = Object.keys(data[0]);
-  const colOf   = findCol(headers, ['of']);
-  const colCli  = findCol(headers, ['cliente', 'client']);
-  const colPap  = findCol(headers, ['p.o.', 'p.o', 'papelao', 'papelão', 'papel']);
-  const colQtd  = findCol(headers, ['qtde pedido', 'quantidade pedido']);
-  const colLarg = findCol(headers, ['largura']);
-  const colComp = findCol(headers, ['comprimento']);
-  const colRef  = findCol(headers, ['sliter', 'slitter', 'vincad', 'referencia', 'referência']);
+  const headers=Object.keys(data[0]);
+  const colOf=findCol(headers,['of']);
+  const colCli=findCol(headers,['cliente','client']);
+  const colPap=findCol(headers,['p.o.','p.o','papelao','papelão','papel']);
+  const colQtd=findCol(headers,['qtde pedido','quantidade pedido']);
+  const colLarg=findCol(headers,['largura']);
+  const colComp=findCol(headers,['comprimento']);
+  const colRef=findCol(headers,['sliter','slitter','vincad','referencia','referência']);
   if (!colOf) return null;
-  return data
-    .filter(r => r[colOf] && !isNaN(parseFloat(r[colOf])) && parseFloat(r[colOf]) > 100000)
-    .map(r => {
-      let medida = '';
-      if (colLarg && colComp) {
-        const l = numFmt(r[colLarg]), c = numFmt(r[colComp]);
-        if (l && c) medida = l + ' X ' + c;
-      }
-      return {
-        of:         String(r[colOf]).trim().split('.')[0],
-        cliente:    colCli  ? String(r[colCli]).trim()  : '',
-        papelao:    colPap  ? String(r[colPap]).trim()  : '',
-        qtdePedido: colQtd  ? String(r[colQtd]).trim()  : '',
-        medida,
-        referencia: colRef  ? String(r[colRef]).trim()  : '',
-      };
-    });
+  return data.filter(r=>r[colOf]&&!isNaN(parseFloat(r[colOf]))&&parseFloat(r[colOf])>100000).map(r=>{
+    let medida='';
+    if(colLarg&&colComp){const l=numFmt(r[colLarg]),c=numFmt(r[colComp]);if(l&&c)medida=l+' X '+c;}
+    return {
+      of:String(r[colOf]).trim().split('.')[0],
+      cliente:colCli?String(r[colCli]).trim():'',
+      papelao:colPap?String(r[colPap]).trim():'',
+      qtdePedido:colQtd?String(r[colQtd]).trim():'',
+      medida,
+      referencia:colRef?String(r[colRef]).trim():'',
+    };
+  });
 }
 
-// ---- Leitura do xlsx ----
 document.getElementById('fileXlsx').addEventListener('change', function(e) {
-  const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(ev) {
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
     try {
-      workbook = XLSX.read(ev.target.result, {type: 'array', cellDates: false});
-      const abas = workbook.SheetNames;
-      const sel = document.getElementById('selAba');
-      sel.innerHTML = '';
-      abas.forEach(a => { const o = document.createElement('option'); o.value = o.textContent = a; sel.appendChild(o); });
-      let carregou = false;
-      for (const aba of abas) {
-        const r = processarAba(workbook.Sheets[aba]);
-        if (r && r.length > 0) { sel.value = aba; popularOrdens(r, aba); carregou = true; break; }
-      }
-      if (!carregou) {
-        document.getElementById('cardAba').style.display = 'block';
-        document.getElementById('msgXlsx').textContent = 'Selecione a aba da programação abaixo.';
-        document.getElementById('msgXlsx').style.display = 'block';
-      }
-    } catch(err) { alert('Erro ao ler planilha: ' + err.message); }
+      workbook=XLSX.read(ev.target.result,{type:'array',cellDates:false});
+      const abas=workbook.SheetNames;
+      const sel=document.getElementById('selAba');
+      sel.innerHTML='';
+      abas.forEach(a=>{const o=document.createElement('option');o.value=o.textContent=a;sel.appendChild(o);});
+      let ok=false;
+      for(const aba of abas){const r=processarAba(workbook.Sheets[aba]);if(r&&r.length>0){sel.value=aba;popularOrdens(r,aba);ok=true;break;}}
+      if(!ok){document.getElementById('cardAba').style.display='block';document.getElementById('msgXlsx').textContent='Selecione a aba abaixo.';document.getElementById('msgXlsx').style.display='block';}
+    } catch(err){alert('Erro: '+err.message);}
   };
   reader.readAsArrayBuffer(file);
 });
 
-function carregarAba() {
-  const aba = document.getElementById('selAba').value;
-  if (!workbook || !aba) return;
-  const r = processarAba(workbook.Sheets[aba]);
-  if (!r)        { alert('Coluna OF não encontrada nesta aba.'); return; }
-  if (!r.length) { alert('Nenhuma OF encontrada nesta aba.'); return; }
-  popularOrdens(r, aba);
+function carregarAba(){
+  const aba=document.getElementById('selAba').value;
+  if(!workbook||!aba) return;
+  const r=processarAba(workbook.Sheets[aba]);
+  if(!r){alert('Coluna OF não encontrada.');return;}
+  if(!r.length){alert('Nenhuma OF encontrada.');return;}
+  popularOrdens(r,aba);
 }
 
-function popularOrdens(lista, aba) {
-  ordens = lista;
-  const sel = document.getElementById('selOf');
-  sel.innerHTML = '';
-  ordens.forEach(o => {
-    const opt = document.createElement('option');
-    opt.value = o.of;
-    opt.textContent = 'OF ' + o.of + (o.cliente ? ' · ' + o.cliente : '');
-    sel.appendChild(opt);
-  });
-  document.getElementById('msgXlsx').textContent = '✓ ' + ordens.length + ' OF(s) carregada(s) — aba: ' + aba;
-  document.getElementById('msgXlsx').style.display = 'block';
-  document.getElementById('cardAba').style.display  = 'none';
-  document.getElementById('cardOf').style.display   = 'block';
-  document.getElementById('cardPalete').style.display = 'block';
-  document.getElementById('btnImprimir').style.display = 'block';
-  document.getElementById('btnBaixar').style.display   = 'block';
+function popularOrdens(lista,aba){
+  ordens=lista;
+  const sel=document.getElementById('selOf');
+  sel.innerHTML='';
+  ordens.forEach(o=>{const opt=document.createElement('option');opt.value=o.of;opt.textContent='OF '+o.of+(o.cliente?' · '+o.cliente:'');sel.appendChild(opt);});
+  document.getElementById('msgXlsx').textContent='✓ '+ordens.length+' OF(s) carregada(s) — aba: '+aba;
+  document.getElementById('msgXlsx').style.display='block';
+  document.getElementById('cardAba').style.display='none';
+  document.getElementById('cardOf').style.display='block';
+  document.getElementById('cardPalete').style.display='block';
+  document.getElementById('btnImprimir').style.display='block';
+  document.getElementById('btnBaixar').style.display='block';
   atualizarPreview();
 }
 
 document.getElementById('selOf').addEventListener('change', atualizarPreview);
-function atualizarPreview() {
-  const of = document.getElementById('selOf').value;
-  const o = ordens.find(x => x.of === of); if (!o) return;
-  let html = '';
-  if (o.cliente)    html += '<div><span>Cliente: </span><strong>' + esc(o.cliente) + '</strong></div>';
-  if (o.papelao)    html += '<div><span>Papelão: </span><strong>' + esc(o.papelao) + '</strong></div>';
-  if (o.qtdePedido) html += '<div><span>Qtde pedido: </span><strong>' + esc(o.qtdePedido) + ' chapas</strong></div>';
-  if (o.medida)     html += '<div><span>Medida: </span><strong>' + esc(o.medida) + '</strong></div>';
-  if (o.referencia) html += '<div><span>Referência: </span><strong>' + esc(o.referencia) + '</strong></div>';
-  const prev = document.getElementById('previewDados');
-  prev.innerHTML = html; prev.style.display = html ? 'block' : 'none';
+function atualizarPreview(){
+  const of=document.getElementById('selOf').value;
+  const o=ordens.find(x=>x.of===of); if(!o) return;
+  let html='';
+  if(o.cliente)    html+='<div><span>Cliente: </span><strong>'+esc(o.cliente)+'</strong></div>';
+  if(o.papelao)    html+='<div><span>Papelão: </span><strong>'+esc(o.papelao)+'</strong></div>';
+  if(o.qtdePedido) html+='<div><span>Qtde pedido: </span><strong>'+esc(o.qtdePedido)+' chapas</strong></div>';
+  if(o.medida)     html+='<div><span>Medida: </span><strong>'+esc(o.medida)+'</strong></div>';
+  if(o.referencia) html+='<div><span>Referência: </span><strong>'+esc(o.referencia)+'</strong></div>';
+  const prev=document.getElementById('previewDados');
+  prev.innerHTML=html; prev.style.display=html?'block':'none';
 }
 
-// ---- Geração do PDF ----
+// ---- Geração do PDF com tamanhos fiéis ao modelo manual ----
 function gerarPDF(dados) {
-  const doc = new jsPDF({unit: 'mm', format: 'a4', orientation: 'portrait'});
-  const PW = 210, PH = 297;
-  const left = 14;
-  const topoFita = 40; // espaço para fita
+  const doc = new jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
+  const PW=210, left=14, topoFita=40;
 
   // Logo
-  const logoW = PW - 28;
-  const logoH = logoW * 0.364;
-  doc.addImage('data:image/jpeg;base64,' + LOGO_B64, 'JPEG', left, topoFita, logoW, logoH);
+  const logoW=PW-28, logoH=logoW*0.364;
+  doc.addImage('data:image/jpeg;base64,'+LOGO_B64,'JPEG',left,topoFita,logoW,logoH);
 
   let y = topoFita + logoH + 9;
-  const lbl = 10, val = 17, valSm = 13;
+
+  // Tamanhos (convertidos de half-points para pt, depois pt→mm: 1pt=0.3528mm)
+  // sz=28 → 14pt → ~4.94mm  |  sz=40 → 20pt → ~7.06mm  |  sz=52 → 26pt → ~9.17mm  |  sz=48 → 24pt → ~8.47mm
+  const LBL  = 11;   // rótulos (mm)
+  const VAL  = 20;   // valores padrão (pt para jsPDF que usa pt internamente)
+  const VALG = 26;   // quantidade de palete
+  const VALN = 24;   // número do palete
+  const VALR = 14;   // referência
+
+  // Função para calcular tamanho de fonte adaptativo para o cliente
+  function fonteSzCliente(nome) {
+    // jsPDF: medir largura em pt com fonte 20pt
+    doc.setFont('helvetica','bold'); doc.setFontSize(VAL);
+    const wDisp = (PW - left - 14 - 21) * (72/25.4); // área disponível em pt
+    const wNome = doc.getTextWidth(nome);
+    if (wNome <= wDisp) return VAL;
+    if (wNome <= wDisp * (VAL/18)) return 18;
+    if (wNome <= wDisp * (VAL/16)) return 16;
+    return 14;
+  }
 
   // IDENTIFICAÇÃO DO PRODUTO
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(lbl);
-  doc.text('IDENTIFICAÇÃO DO PRODUTO', PW / 2, y, {align: 'center'});
-  y += 9;
+  doc.setFont('helvetica','normal'); doc.setFontSize(LBL);
+  doc.text('IDENTIFICAÇÃO DO PRODUTO', PW/2, y, {align:'center'});
+  y += 8;
 
   // CLIENTE
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(lbl);
+  doc.setFont('helvetica','normal'); doc.setFontSize(LBL);
   doc.text('CLIENTE:', left, y);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(val);
-  doc.text(dados.cliente, left + 21, y);
-  y += 11;
+  const szCli = fonteSzCliente(dados.cliente);
+  doc.setFont('helvetica','bold'); doc.setFontSize(szCli);
+  doc.text(dados.cliente, left+21, y);
+  y += szCli > 18 ? 12 : 10;
 
   // OF + PAPELÃO
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(lbl);
+  doc.setFont('helvetica','normal'); doc.setFontSize(LBL);
   doc.text('OF:', left, y);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(val);
-  doc.text(dados.of, left + 10, y);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(lbl);
-  doc.text('PAPELÃO:', left + 52, y);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(val);
-  doc.text(dados.papelao, left + 76, y);
-  y += 11;
+  doc.setFont('helvetica','bold'); doc.setFontSize(VAL);
+  doc.text(dados.of, left+10, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(LBL);
+  doc.text('PAPELÃO:', left+52, y);
+  doc.setFont('helvetica','bold'); doc.setFontSize(VAL);
+  doc.text(dados.papelao, left+76, y);
+  y += 12;
 
   // QUANTIDADE PEDIDO
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(lbl);
+  doc.setFont('helvetica','normal'); doc.setFontSize(LBL);
   doc.text('QUANTIDADE PEDIDO', left, y);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(val);
+  doc.setFont('helvetica','bold'); doc.setFontSize(VAL);
   const qtdW = doc.getTextWidth(dados.qtdePedido);
-  doc.text(dados.qtdePedido, left + 54, y);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(lbl);
-  doc.text('CHAPAS', left + 54 + qtdW + 2, y);
-  y += 11;
+  doc.text(dados.qtdePedido, left+54, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(LBL);
+  doc.text('CHAPAS', left+54+qtdW+2, y);
+  y += 12;
 
   // MEDIDA
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(lbl);
+  doc.setFont('helvetica','normal'); doc.setFontSize(LBL);
   doc.text('MEDIDA:', left, y);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(val);
-  doc.text(dados.medida, left + 21, y);
-  y += 11;
+  doc.setFont('helvetica','bold'); doc.setFontSize(VAL);
+  doc.text(dados.medida, left+21, y);
+  y += 12;
 
   // REFERÊNCIA
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(lbl);
+  doc.setFont('helvetica','normal'); doc.setFontSize(LBL);
   doc.text('REFERÊNCIA:', left, y);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(valSm);
-  doc.text(dados.referencia, left + 30, y);
-  y += 10;
-
-  // QUANTIDADE DE PALETE
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(lbl);
-  doc.text('QUANTIDADE DE PALETE', left, y);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(val);
-  doc.text(dados.qtdePalete, left + 60, y);
+  doc.setFont('helvetica','bold'); doc.setFontSize(VALR);
+  doc.text(dados.referencia, left+30, y);
   y += 11;
 
+  // QUANTIDADE DE PALETE
+  doc.setFont('helvetica','normal'); doc.setFontSize(LBL);
+  doc.text('QUANTIDADE DE PALETE', left, y);
+  doc.setFont('helvetica','bold'); doc.setFontSize(VALG);
+  doc.text(dados.qtdePalete, left+60, y);
+  y += 13;
+
   // PALETE Nº
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(lbl);
+  doc.setFont('helvetica','normal'); doc.setFontSize(LBL);
   doc.text('PALETE Nº', left, y);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(val);
-  doc.text(dados.numPalete, left + 24, y);
+  doc.setFont('helvetica','bold'); doc.setFontSize(VALN);
+  doc.text(dados.numPalete, left+24, y);
 
   return doc;
 }
 
-function getDados() {
-  const of = document.getElementById('selOf').value;
-  const o = ordens.find(x => x.of === of); if (!o) return null;
-  const numRaw     = document.getElementById('numPalete').value;
-  const qtdePalete = document.getElementById('qtdePalete').value;
-  if (!numRaw || !qtdePalete) return null;
-  return { ...o, qtdePalete, numPalete: String(parseInt(numRaw)).padStart(2, '0'), numRaw: parseInt(numRaw) };
+function getDados(){
+  const of=document.getElementById('selOf').value;
+  const o=ordens.find(x=>x.of===of); if(!o) return null;
+  const numRaw=document.getElementById('numPalete').value;
+  const qtdePalete=document.getElementById('qtdePalete').value;
+  if(!numRaw||!qtdePalete) return null;
+  return {...o, qtdePalete, numPalete:String(parseInt(numRaw)).padStart(2,'0'), numRaw:parseInt(numRaw)};
 }
 
-function avancarPalete(numRaw) {
-  document.getElementById('numPalete').value  = numRaw + 1;
-  document.getElementById('qtdePalete').value = '';
+function avancarPalete(numRaw){
+  document.getElementById('numPalete').value=numRaw+1;
+  document.getElementById('qtdePalete').value='';
 }
 
-function gerarEImprimir() {
-  const dados = getDados();
-  if (!dados) { mostrarMsg('Preencha o número do palete e a quantidade de chapas.', false); return; }
-  const doc = gerarPDF(dados);
-  const blob = doc.output('blob');
-  const url  = URL.createObjectURL(blob);
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;';
-  iframe.src = url;
-  document.body.appendChild(iframe);
-  iframe.onload = () => {
-    iframe.contentWindow.print();
-    setTimeout(() => { document.body.removeChild(iframe); URL.revokeObjectURL(url); }, 8000);
-  };
-  mostrarMsg('✓ OF ' + dados.of + ' · Palete ' + dados.numPalete + ' enviado para impressão', true);
+function gerarEImprimir(){
+  const dados=getDados();
+  if(!dados){mostrarMsg('Preencha o número do palete e a quantidade de chapas.',false);return;}
+  const doc=gerarPDF(dados);
+  const fileName='etiqueta_OF'+dados.of+'_palete'+dados.numPalete+'.pdf';
+  const blob=doc.output('blob');
+  const url=URL.createObjectURL(blob);
+
+  // Detecta WebView Android (Kodular/app nativo)
+  const isWebView = /wv|WebView/.test(navigator.userAgent) || (window.Android !== undefined);
+
+  if (isWebView) {
+    // Dentro do app: abre PDF em nova aba e dispara print() nativo do Android
+    const w = window.open(url, '_blank');
+    if (w) {
+      w.onload = () => { try { w.print(); } catch(e) {} };
+    } else {
+      // Se não abriu nova aba, usa iframe invisível
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;width:0;height:0;border:none;';
+      iframe.src = url;
+      document.body.appendChild(iframe);
+      iframe.onload = () => {
+        try { iframe.contentWindow.print(); } catch(e) {}
+        setTimeout(() => document.body.removeChild(iframe), 5000);
+      };
+    }
+    mostrarMsg('✓ OF '+dados.of+' · Palete '+dados.numPalete+' — abrindo impressão...',true);
+
+  } else if (navigator.share && navigator.canShare && navigator.canShare({files:[new File([blob],fileName,{type:'application/pdf'})]})) {
+    // Navegador com suporte a share (Chrome Android)
+    const file = new File([blob], fileName, {type:'application/pdf'});
+    navigator.share({files:[file], title:fileName})
+      .then(()=>mostrarMsg('✓ OF '+dados.of+' · Palete '+dados.numPalete+' — compartilhado',true))
+      .catch(()=>{});
+
+  } else {
+    // Fallback: abre em nova aba
+    window.open(url,'_blank');
+    mostrarMsg('✓ OF '+dados.of+' · Palete '+dados.numPalete+' — PDF aberto, toque em Imprimir',true);
+  }
+
   avancarPalete(dados.numRaw);
 }
 
-function gerarEBaixar() {
-  const dados = getDados();
-  if (!dados) { mostrarMsg('Preencha o número do palete e a quantidade de chapas.', false); return; }
-  const doc = gerarPDF(dados);
-  doc.save('etiqueta_OF' + dados.of + '_palete' + dados.numPalete + '.pdf');
-  mostrarMsg('✓ PDF baixado — OF ' + dados.of + ' · Palete ' + dados.numPalete, true);
+function gerarEBaixar(){
+  const dados=getDados();
+  if(!dados){mostrarMsg('Preencha o número do palete e a quantidade de chapas.',false);return;}
+  const doc=gerarPDF(dados);
+  doc.save('etiqueta_OF'+dados.of+'_palete'+dados.numPalete+'.pdf');
+  mostrarMsg('✓ PDF baixado — OF '+dados.of+' · Palete '+dados.numPalete,true);
   avancarPalete(dados.numRaw);
 }
 
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function mostrarMsg(txt, ok) {
-  const el = document.getElementById('msgResult');
-  el.textContent = txt; el.className = 'msg ' + (ok ? 'ok' : 'err'); el.style.display = 'block';
-}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function mostrarMsg(txt,ok){const el=document.getElementById('msgResult');el.textContent=txt;el.className='msg '+(ok?'ok':'err');el.style.display='block';}
 </script>
 </body>
 </html>
